@@ -1,0 +1,15 @@
+[package]
+name = "proc-etw-manifest"
+version = "0.1.0"
+edition = "2021"
+authors = ["Marvin Gudel <marvin.s.gudel@studmail.w-hs.de>"]
+license = "MIT"
+description = "Proc-macro crate to generate rust bindings for Microsoft Windows instrumentation manifests."
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "2.0.39"
+uuid = "1.6.1"
+xml-rs = "0.8.19"
