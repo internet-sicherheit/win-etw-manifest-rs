@@ -68,20 +68,93 @@ pub fn include_manifests(input: TokenStream) -> TokenStream {
 }
 
 fn create_quote(providers: &[Provider]) -> proc_macro2::TokenStream {
+    let guid_consts = quote_guid_consts(providers);
+    let impl_get_provider_name = quote_get_provider_name(providers);
+    let provider_structs = quote_provider_structs(providers);
+
+    quote! {
+        #guid_consts
+        #impl_get_provider_name
+        #provider_structs
+    }
+}
+
+fn quote_guid_consts(providers: &[Provider]) -> proc_macro2::TokenStream {
     let guid_tup = providers
         .iter()
         .map(|x| (x.guid_constant_name(), x.guid.to_string()));
     let (guid_idents, guid_literals): (Vec<_>, Vec<_>) = guid_tup.unzip();
 
-    let names = providers.iter().map(|x| x.name.as_str());
-
     quote! {
         #(const #guid_idents: Uuid = uuid!(#guid_literals);)*
+    }
+}
 
+fn quote_provider_structs(providers: &[Provider]) -> proc_macro2::TokenStream {
+    let mut quotes: Vec<proc_macro2::TokenStream> = Vec::new();
+    for p in providers {
+        quotes.push(quote_provider_struct(p));
+    }
+
+    let (guid_idents, struct_idents): (Vec<_>, Vec<_>) = providers
+        .iter()
+        .map(|x| {
+            (
+                x.guid_constant_name(),
+                proc_macro2::Ident::new(x.symbol.as_str(), proc_macro2::Span::call_site()),
+            )
+        })
+        .unzip();
+
+    quote! {
+        impl ModernEvent {
+            pub fn get_event_task_name(&self) -> Option<&str> {
+                match self.header.provider_id {
+                    #(#guid_idents => #struct_idents::get_event_task_name(&self.header.event_descriptor),)*
+                    _ => None,
+                }
+            }
+        }
+        #(#quotes)*
+    }
+}
+fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
+    let symbol = proc_macro2::Ident::new(p.symbol.as_str(), proc_macro2::Span::call_site());
+    let (event_ids, event_tasks): (Vec<_>, Vec<_>) = p
+        .events
+        .iter()
+        .map(|x| {
+            (
+                proc_macro2::Literal::u16_unsuffixed(x.value),
+                x.task.as_str(),
+            )
+        })
+        .unzip();
+
+    quote! {
+        struct #symbol;
+        impl #symbol {
+            fn get_event_task_name(ed: &EventDescriptor) -> Option<&str> {
+                match ed.id {
+                    #(#event_ids => Some(#event_tasks),)*
+                    _ => None,
+                }
+            }
+        }
+    }
+}
+
+fn quote_get_provider_name(providers: &[Provider]) -> proc_macro2::TokenStream {
+    let guid_tup = providers
+        .iter()
+        .map(|x| (x.guid_constant_name(), x.name.as_str()));
+    let (guid_idents, prov_names): (Vec<_>, Vec<_>) = guid_tup.unzip();
+
+    quote! {
         impl ModernEvent {
             pub fn get_provider_name(&self) -> Option<&str> {
                 match self.header.provider_id {
-                    #(#guid_idents => Some(#names),)*
+                    #(#guid_idents => Some(#prov_names),)*
                     _ => None,
                 }
             }

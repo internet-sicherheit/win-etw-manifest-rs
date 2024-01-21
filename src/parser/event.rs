@@ -6,9 +6,9 @@ use super::{find_attribute, Error, ErrorKind};
 
 #[derive(Debug)]
 pub(crate) struct Event {
-    pub(crate) value: u64,
+    pub(crate) value: u16,
     pub(crate) symbol: String,
-    pub(crate) version: u16,
+    pub(crate) version: u8,
     pub(crate) task: String,
     pub(crate) opcode: Option<String>,
     pub(crate) level: String,
@@ -19,13 +19,13 @@ pub(crate) struct Event {
 impl Event {
     fn from_attributes(attr: &[OwnedAttribute]) -> Result<Event, Error> {
         let value = find_attribute(attr, "value")?;
-        let value: u64 = value
+        let value: u16 = value
             .parse()
             .map_err(|_| Error::new_with_kind(ErrorKind::TypeParseError))?;
 
         let symbol = find_attribute(attr, "symbol")?;
         let version = find_attribute(attr, "version")?;
-        let version: u16 = version
+        let version: u8 = version
             .parse()
             .map_err(|_| Error::new_with_kind(ErrorKind::TypeParseError))?;
         let task = find_attribute(attr, "task")?;
