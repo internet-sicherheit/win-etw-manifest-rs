@@ -73,6 +73,15 @@ impl Event {
             }
         }
     }
+
+    pub(crate) fn identifier_tuple(&self) -> proc_macro2::TokenStream {
+        use quote::quote;
+        let id = self.value;
+        let version = self.version;
+        quote! {
+            (#id, #version)
+        }
+    }
 }
 
 #[cfg(test)]

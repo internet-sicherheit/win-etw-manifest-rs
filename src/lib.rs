@@ -114,6 +114,12 @@ fn quote_provider_structs(providers: &[Provider]) -> proc_macro2::TokenStream {
                     _ => None,
                 }
             }
+            pub fn get_event_symbol(&self) -> Option<&str> {
+                match self.header.provider_id {
+                    #(#guid_idents => #struct_idents::get_event_symbol(&self.header.event_descriptor),)*
+                    _ => None,
+                }
+            }
         }
         #(#quotes)*
     }
@@ -131,12 +137,24 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
         })
         .unzip();
 
+    let (unique_ids, event_symbol): (Vec<_>, Vec<_>) = p
+        .events
+        .iter()
+        .map(|e| (e.identifier_tuple(), e.symbol.as_str()))
+        .unzip();
+
     quote! {
         struct #symbol;
         impl #symbol {
             fn get_event_task_name(ed: &EventDescriptor) -> Option<&str> {
                 match ed.id {
                     #(#event_ids => Some(#event_tasks),)*
+                    _ => None,
+                }
+            }
+            fn get_event_symbol(ed: &EventDescriptor) -> Option<&str> {
+                match (ed.id, ed.version) {
+                    #(#unique_ids => Some(#event_symbol),)*
                     _ => None,
                 }
             }
