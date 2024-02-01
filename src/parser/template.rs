@@ -2,7 +2,7 @@ use std::io::Read;
 
 use xml::{attribute::OwnedAttribute, reader::XmlEvent, EventReader};
 
-use super::{find_attribute, Error, ErrorKind};
+use super::{find_attribute, Error};
 
 #[derive(Debug)]
 pub(crate) struct Template {

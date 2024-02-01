@@ -1,4 +1,5 @@
 mod parser;
+mod template;
 
 use std::{
     fs::{read_dir, File},
@@ -9,22 +10,6 @@ use proc_macro::TokenStream;
 use quote::quote;
 
 use parser::{parse, Provider};
-
-#[proc_macro]
-pub fn parse_manifest(input: TokenStream) -> TokenStream {
-    let input = match input.into_iter().next().unwrap() {
-        proc_macro::TokenTree::Literal(x) => x.to_string(),
-        _ => panic!("Input must be path literal"),
-    };
-    let str_path = input.trim_matches('"');
-    let path = Path::new(&str_path);
-    println!("{path:?}");
-    let mut f = File::open(path).unwrap();
-
-    let _provider = parse(&mut f).unwrap();
-
-    TokenStream::new()
-}
 
 #[proc_macro]
 pub fn include_manifests(input: TokenStream) -> TokenStream {
@@ -73,9 +58,15 @@ fn create_quote(providers: &[Provider]) -> proc_macro2::TokenStream {
     let provider_structs = quote_provider_structs(providers);
 
     quote! {
-        #guid_consts
-        #impl_get_provider_name
-        #provider_structs
+        /// Event Providers
+        ///
+        /// Event providers which are generated from their instrumentation manifest.
+        pub mod provider {
+            use super::*;
+            #guid_consts
+            #impl_get_provider_name
+            #provider_structs
+        }
     }
 }
 
@@ -86,7 +77,7 @@ fn quote_guid_consts(providers: &[Provider]) -> proc_macro2::TokenStream {
     let (guid_idents, guid_literals): (Vec<_>, Vec<_>) = guid_tup.unzip();
 
     quote! {
-        #(const #guid_idents: Uuid = uuid!(#guid_literals);)*
+        pub #(const #guid_idents: Uuid = uuid!(#guid_literals);)*
     }
 }
 
@@ -108,12 +99,19 @@ fn quote_provider_structs(providers: &[Provider]) -> proc_macro2::TokenStream {
 
     quote! {
         impl ModernEvent {
+            /// Get the task name of the event
+            ///
+            /// Matches against the event GUID and event descriptor and returns the task name associated to the event (if any).
+            /// The task name of an event is provided by the associated instrumentation manifest and generated for every included provider.
             pub fn get_event_task_name(&self) -> Option<&str> {
                 match self.header.provider_id {
                     #(#guid_idents => #struct_idents::get_event_task_name(&self.header.event_descriptor),)*
                     _ => None,
                 }
             }
+            /// Get the event symbol of the event
+            ///
+            /// Matches against the event GUID and event descriptor and returns the symbol associated to the event (if any).
             pub fn get_event_symbol(&self) -> Option<&str> {
                 match self.header.provider_id {
                     #(#guid_idents => #struct_idents::get_event_symbol(&self.header.event_descriptor),)*
@@ -126,6 +124,10 @@ fn quote_provider_structs(providers: &[Provider]) -> proc_macro2::TokenStream {
 }
 fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
     let symbol = proc_macro2::Ident::new(p.symbol.as_str(), proc_macro2::Span::call_site());
+
+    let guid = p.guid.to_string();
+    let guid_const_name = p.guid_constant_name();
+
     let (event_ids, event_tasks): (Vec<_>, Vec<_>) = p
         .events
         .iter()
@@ -144,8 +146,10 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
         .unzip();
 
     quote! {
-        struct #symbol;
+        pub struct #symbol;
         impl #symbol {
+            pub const #guid_const_name: Uuid = uuid!(#guid);
+
             fn get_event_task_name(ed: &EventDescriptor) -> Option<&str> {
                 match ed.id {
                     #(#event_ids => Some(#event_tasks),)*
@@ -187,7 +191,7 @@ mod tests {
     use crate::parser::parse;
 
     #[test]
-    fn testrun() {
+    fn test_parser() {
         let mut f = File::open("test.xml").unwrap();
 
         let provider = parse(&mut f).unwrap();

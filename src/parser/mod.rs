@@ -1,8 +1,8 @@
-mod event;
-mod keyword;
-mod provider;
-mod task;
-mod template;
+pub(crate) mod event;
+pub(crate) mod keyword;
+pub(crate) mod provider;
+pub(crate) mod task;
+pub(crate) mod template;
 
 pub(crate) use provider::Provider;
 
