@@ -1,4 +1,6 @@
+#[allow(unused)]
 mod parser;
+#[allow(unused)]
 mod template;
 
 use std::{
