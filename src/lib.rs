@@ -53,8 +53,6 @@ pub fn include_manifests(input: TokenStream) -> TokenStream {
 }
 
 fn create_quote(providers: &[Provider]) -> proc_macro2::TokenStream {
-    let guid_consts = quote_guid_consts(providers);
-    let impl_get_provider_name = quote_get_provider_name(providers);
     let provider_structs = quote_provider_structs(providers);
 
     quote! {
@@ -63,21 +61,8 @@ fn create_quote(providers: &[Provider]) -> proc_macro2::TokenStream {
         /// Event providers which are generated from their instrumentation manifest.
         pub mod provider {
             use super::*;
-            #guid_consts
-            #impl_get_provider_name
             #provider_structs
         }
-    }
-}
-
-fn quote_guid_consts(providers: &[Provider]) -> proc_macro2::TokenStream {
-    let guid_tup = providers
-        .iter()
-        .map(|x| (x.guid_constant_name(), x.guid.to_string()));
-    let (guid_idents, guid_literals): (Vec<_>, Vec<_>) = guid_tup.unzip();
-
-    quote! {
-        pub #(const #guid_idents: Uuid = uuid!(#guid_literals);)*
     }
 }
 
@@ -99,22 +84,12 @@ fn quote_provider_structs(providers: &[Provider]) -> proc_macro2::TokenStream {
 
     quote! {
         impl ModernEvent {
-            /// Get the task name of the event
+            /// Try to wrap this opaque event in a concise event
             ///
-            /// Matches against the event GUID and event descriptor and returns the task name associated to the event (if any).
-            /// The task name of an event is provided by the associated instrumentation manifest and generated for every included provider.
-            pub fn get_event_task_name(&self) -> Option<&str> {
+            /// Returns None if no implementation for the provided event exists.
+            pub fn into_contained_event(self) -> Option<Box<dyn Event>> {
                 match self.header.provider_id {
-                    #(#guid_idents => #struct_idents::get_event_task_name(&self.header.event_descriptor),)*
-                    _ => None,
-                }
-            }
-            /// Get the event symbol of the event
-            ///
-            /// Matches against the event GUID and event descriptor and returns the symbol associated to the event (if any).
-            pub fn get_event_symbol(&self) -> Option<&str> {
-                match self.header.provider_id {
-                    #(#guid_idents => #struct_idents::get_event_symbol(&self.header.event_descriptor),)*
+                    #(#struct_idents::#guid_idents => Some(Box::new(#struct_idents::from(self))),)*
                     _ => None,
                 }
             }
@@ -127,6 +102,8 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
 
     let guid = p.guid.to_string();
     let guid_const_name = p.guid_constant_name();
+
+    let name = p.name.as_str();
 
     let (event_ids, event_tasks): (Vec<_>, Vec<_>) = p
         .events
@@ -146,37 +123,49 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
         .unzip();
 
     quote! {
-        pub struct #symbol;
+        pub struct #symbol {
+            modern_event: ModernEvent,
+        }
         impl #symbol {
             pub const #guid_const_name: Uuid = uuid!(#guid);
+            /// Wraps a [ModernEvent] into this concise event
+            ///
+            /// _Warning:_ No checks are performed if the [ModernEvent] is of this event type
+            fn from(value: ModernEvent) -> Self {
+                Self { modern_event: value }
+            }
+        }
+        impl ::core::ops::Deref for #symbol {
+            type Target = ModernEvent;
+            fn deref(&self) -> &Self::Target {
+                &self.modern_event
+            }
+        }
+        impl ::core::convert::TryFrom<ModernEvent> for #symbol {
+            type Error = &'static str;
+            fn try_from(value: ModernEvent) -> ::core::result::Result<Self, Self::Error> {
+                if matches!(value.header.provider_id, Self::#guid_const_name) {
+                    Ok(Self { modern_event: value })
+                } else {
+                    Err("GUID of event doesn't match")
+                }
 
-            fn get_event_task_name(ed: &EventDescriptor) -> Option<&str> {
-                match ed.id {
+            }
+        }
+        impl Event for #symbol {
+            fn get_provider_name(&self) -> &str {
+                #name
+            }
+            fn get_event_task_name(&self) -> Option<&str> {
+                match self.header.event_descriptor.id {
                     #(#event_ids => Some(#event_tasks),)*
                     _ => None,
                 }
             }
-            fn get_event_symbol(ed: &EventDescriptor) -> Option<&str> {
+            fn get_event_symbol(&self) -> Option<&str> {
+                let ed = &self.header.event_descriptor;
                 match (ed.id, ed.version) {
                     #(#unique_ids => Some(#event_symbol),)*
-                    _ => None,
-                }
-            }
-        }
-    }
-}
-
-fn quote_get_provider_name(providers: &[Provider]) -> proc_macro2::TokenStream {
-    let guid_tup = providers
-        .iter()
-        .map(|x| (x.guid_constant_name(), x.name.as_str()));
-    let (guid_idents, prov_names): (Vec<_>, Vec<_>) = guid_tup.unzip();
-
-    quote! {
-        impl ModernEvent {
-            pub fn get_provider_name(&self) -> Option<&str> {
-                match self.header.provider_id {
-                    #(#guid_idents => Some(#prov_names),)*
                     _ => None,
                 }
             }
