@@ -1,5 +1,6 @@
 use std::io::Read;
 
+use quote::format_ident;
 use xml::{attribute::OwnedAttribute, reader::XmlEvent, EventReader};
 
 use super::{find_attribute, Error};
@@ -34,6 +35,23 @@ impl Template {
                 _ => return Err(Error::new_unexpected()),
             }
         }
+    }
+
+    pub(crate) fn function_name(&self) -> proc_macro2::Ident {
+        let mut name = self.tid.clone();
+
+        if !name.is_ascii() {
+            panic!(
+                "Non ASCII template id \"{}\" found, which is not supported!",
+                name
+            );
+        }
+        while let Some(i) = name.find(char::is_uppercase) {
+            name.insert(i, '_');
+        }
+        name.make_ascii_lowercase();
+
+        format_ident!("parse_payload_{name}")
     }
 }
 
