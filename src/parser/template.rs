@@ -1,6 +1,7 @@
-use std::io::Read;
+use std::{io::Read, str::FromStr};
 
-use quote::format_ident;
+use proc_macro2::{Ident, Span};
+use quote::{format_ident, quote};
 use xml::{attribute::OwnedAttribute, reader::XmlEvent, EventReader};
 
 use super::{find_attribute, Error};
@@ -66,6 +67,16 @@ impl DataType {
         let in_type = find_attribute(attr, "inType")?;
         Ok(DataType { name, in_type })
     }
+    pub(crate) fn quote_parse_fn(&self) -> proc_macro2::TokenStream {
+        let intype: WinInType = self.in_type.parse().unwrap();
+        let intype_variant_ident: Ident = intype.into();
+        quote! {
+            read_payload_item(&mut self, in_type: WinInType::#intype_variant_ident)
+        }
+    }
+    pub(crate) fn name_literal(&self) -> proc_macro2::Literal {
+        self.name.parse().unwrap()
+    }
 }
 impl Template {
     pub(super) fn parse_templates<R: Read>(
@@ -94,6 +105,92 @@ impl Template {
                 }
                 _ => return Err(Error::new_unexpected()),
             }
+        }
+    }
+}
+
+/// Windows InTypes
+#[derive(Debug, Clone, Copy)]
+enum WinInType {
+    Int8,
+    UInt8,
+    Int16,
+    UInt16,
+    Int32,
+    UInt32,
+    Int64,
+    UInt64,
+    Float,
+    Double,
+    Boolean,
+    AnsiString,
+    UnicodeString,
+    Binary,
+    Pointer,
+    SizeT,
+    Guid,
+    Sid,
+    Filetime,
+    Systemtime,
+}
+#[derive(Debug, Clone, Copy)]
+struct ParseInTypeError;
+impl FromStr for WinInType {
+    type Err = ParseInTypeError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use WinInType::*;
+        match s {
+            "win:Int8" => Ok(Int8),
+            "win:UInt8" => Ok(UInt8),
+            "win:Int16" => Ok(Int16),
+            "win:UInt16" => Ok(UInt16),
+            "win:Int32" => Ok(Int32),
+            "win:UInt32" => Ok(UInt32),
+            "win:Int64" => Ok(Int64),
+            "win:UInt64" => Ok(UInt64),
+            "win:Float" => Ok(Float),
+            "win:Double" => Ok(Double),
+            "win:Boolean" => Ok(Boolean),
+            "win:AnsiChar" => todo!(),
+            "win:UnicodeChar" => todo!(),
+            "win:AnsiString" => Ok(AnsiString),
+            "win:UnicodeString" => Ok(UnicodeString),
+            "win:Binary" => Ok(Binary),
+            "win:HexDump" => Ok(Binary),
+            "win:Pointer" => Ok(Pointer),
+            "win:SizeT" => Ok(SizeT),
+            "win:GUID" => Ok(Guid),
+            "win:SID" => Ok(Sid),
+            "win:FILETIME" => Ok(Filetime),
+            "win:SYSTEMTIME" => Ok(Systemtime),
+            _ => Err(ParseInTypeError),
+        }
+    }
+}
+impl From<WinInType> for proc_macro2::Ident {
+    fn from(value: WinInType) -> Self {
+        match value {
+            WinInType::Int8 => Ident::new("Int8", Span::call_site()),
+            WinInType::UInt8 => Ident::new("UInt8", Span::call_site()),
+            WinInType::Int16 => Ident::new("Int16", Span::call_site()),
+            WinInType::UInt16 => Ident::new("UInt16", Span::call_site()),
+            WinInType::Int32 => Ident::new("Int32", Span::call_site()),
+            WinInType::UInt32 => Ident::new("UInt32", Span::call_site()),
+            WinInType::Int64 => Ident::new("Int64", Span::call_site()),
+            WinInType::UInt64 => Ident::new("UInt64", Span::call_site()),
+            WinInType::Float => Ident::new("Float", Span::call_site()),
+            WinInType::Double => Ident::new("Double", Span::call_site()),
+            WinInType::Boolean => Ident::new("Boolean", Span::call_site()),
+            WinInType::AnsiString => Ident::new("AnsiString", Span::call_site()),
+            WinInType::UnicodeString => Ident::new("UnicodeString", Span::call_site()),
+            WinInType::Binary => Ident::new("Binary", Span::call_site()),
+            WinInType::Pointer => Ident::new("Pointer", Span::call_site()),
+            WinInType::SizeT => Ident::new("SizeT", Span::call_site()),
+            WinInType::Guid => Ident::new("Guid", Span::call_site()),
+            WinInType::Sid => Ident::new("Sid", Span::call_site()),
+            WinInType::Filetime => Ident::new("Filetime", Span::call_site()),
+            WinInType::Systemtime => Ident::new("Systemtime", Span::call_site()),
         }
     }
 }
