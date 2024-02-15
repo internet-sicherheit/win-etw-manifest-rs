@@ -2,7 +2,7 @@ use std::io::Read;
 
 use xml::{attribute::OwnedAttribute, reader::XmlEvent, EventReader};
 
-use super::{find_attribute, Error, ErrorKind};
+use super::{find_attribute, template::make_function_name, Error, ErrorKind};
 
 #[derive(Debug)]
 pub(crate) struct Event {
@@ -81,6 +81,19 @@ impl Event {
         quote! {
             (#id, #version)
         }
+    }
+    pub(crate) fn template_function_ident(&self) -> Option<proc_macro2::Ident> {
+        let mut name = self.template.clone()?;
+
+        if !name.is_ascii() {
+            panic!(
+                "Non ASCII template id \"{}\" found, which is not supported!",
+                name
+            );
+        }
+        make_function_name(&mut name);
+
+        Some(quote::format_ident!("parse_payload_{name}"))
     }
 }
 

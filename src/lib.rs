@@ -124,9 +124,18 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
         .map(|e| (e.identifier_tuple(), e.symbol.as_str()))
         .unzip();
 
+    let (event_to_template, template_fn): (Vec<_>, Vec<_>) = p
+        .events
+        .iter()
+        .filter(|e| e.template_function_ident().is_some())
+        .map(|e| (e.identifier_tuple(), e.template_function_ident().unwrap()))
+        .unzip();
+
+    let templates = template::generate_templates(symbol.clone(), &p.templates);
     quote! {
         pub struct #symbol {
             modern_event: ModernEvent,
+            payload: ::core::option::Option<::std::collections::HashMap<&'static str, WinOutType>>,
         }
         impl #symbol {
             pub const #guid_const_name: Uuid = uuid!(#guid);
@@ -134,7 +143,7 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
             ///
             /// _Warning:_ No checks are performed if the [ModernEvent] is of this event type
             fn from(value: ModernEvent) -> Self {
-                Self { modern_event: value }
+                Self { modern_event: value, payload: None }
             }
         }
         impl ::core::ops::Deref for #symbol {
@@ -143,11 +152,16 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
                 &self.modern_event
             }
         }
+        impl ::core::ops::DerefMut for #symbol {
+            fn deref_mut(&mut self) -> &mut Self::Target {
+                &mut self.modern_event
+            }
+        }
         impl ::core::convert::TryFrom<ModernEvent> for #symbol {
             type Error = &'static str;
             fn try_from(value: ModernEvent) -> ::core::result::Result<Self, Self::Error> {
                 if matches!(value.header.provider_id, Self::#guid_const_name) {
-                    Ok(Self { modern_event: value })
+                    Ok(Self { modern_event: value, payload: None })
                 } else {
                     Err("GUID of event doesn't match")
                 }
@@ -171,7 +185,20 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
                     _ => None,
                 }
             }
+            fn get_payload_items(&mut self) -> Option<&HashMap<&'static str, WinOutType>> {
+                if self.payload.is_some() {
+                    return self.payload.as_ref();
+                }
+
+                let ed = &self.header.event_descriptor;
+                match (ed.id, ed.version) {
+                    #(#event_to_template => {let _ = self.#template_fn();})*
+                    _ => {}
+                }
+                self.payload.as_ref()
+            }
         }
+        #templates
     }
 }
 

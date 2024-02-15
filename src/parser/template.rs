@@ -47,12 +47,23 @@ impl Template {
                 name
             );
         }
-        while let Some(i) = name.find(char::is_uppercase) {
-            name.insert(i, '_');
-        }
-        name.make_ascii_lowercase();
+        make_function_name(&mut name);
 
         format_ident!("parse_payload_{name}")
+    }
+}
+
+pub(crate) fn make_function_name(value: &mut String) {
+    while let Some(i) = value.find(char::is_uppercase) {
+        let x = &mut value[i..=i];
+        x.make_ascii_lowercase();
+        if i == 0 {
+            continue;
+        }
+        if value[i - 1..].starts_with('_') {
+            continue;
+        }
+        value.insert(i, '_');
     }
 }
 
@@ -71,11 +82,11 @@ impl DataType {
         let intype: WinInType = self.in_type.parse().unwrap();
         let intype_variant_ident: Ident = intype.into();
         quote! {
-            read_payload_item(&mut self, in_type: WinInType::#intype_variant_ident)
+            read_payload_item(WinInType::#intype_variant_ident)
         }
     }
     pub(crate) fn name_literal(&self) -> proc_macro2::Literal {
-        self.name.parse().unwrap()
+        proc_macro2::Literal::string(&self.name)
     }
 }
 impl Template {
@@ -197,8 +208,11 @@ impl From<WinInType> for proc_macro2::Ident {
 
 #[cfg(test)]
 mod tests {
+    use core::panic;
+
     use super::Template;
     use crate::parser::xml_match_start;
+    use quote::quote;
     use xml::{EventReader, ParserConfig};
 
     #[test]
@@ -246,5 +260,33 @@ mod tests {
         let mut templates = Vec::new();
         Template::parse_templates(&mut reader, &mut templates).unwrap();
         assert_eq!(templates.len(), 3, "Check if all templates were parsed");
+    }
+    #[test]
+    fn test_make_function_name() {
+        let mut name = "somethingThatsNotConvention".to_string();
+        super::make_function_name(&mut name);
+        assert_eq!(name, "something_thats_not_convention");
+
+        let mut name = "StartsWithCapital".to_string();
+        super::make_function_name(&mut name);
+        assert_eq!(name, "starts_with_capital");
+
+        let mut name = "already_has_Underscores".to_string();
+        super::make_function_name(&mut name);
+        assert_eq!(name, "already_has_underscores");
+    }
+    #[test]
+    fn test_quote_parse_fn() {
+        let expected = quote! {
+            read_payload_item(WinInType::Int8)
+        };
+        let data = super::DataType {
+            name: "test".to_owned(),
+            in_type: "win:Int8".to_owned(),
+        };
+
+        let got = data.quote_parse_fn();
+        println!("{got}");
+        assert_eq!(format!("{got}"), format!("{expected}"));
     }
 }
