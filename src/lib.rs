@@ -135,7 +135,7 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
     quote! {
         pub struct #symbol {
             modern_event: ModernEvent,
-            payload: ::core::option::Option<::std::collections::HashMap<&'static str, WinOutType>>,
+            payload: ::core::option::Option<::std::collections::HashMap<&'static str, crate::modern_event::types::WinInTypeItem>>,
         }
         impl #symbol {
             pub const #guid_const_name: Uuid = uuid!(#guid);
@@ -185,7 +185,7 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
                     _ => None,
                 }
             }
-            fn get_payload_items(&mut self) -> Option<&HashMap<&'static str, WinOutType>> {
+            fn get_payload_items(&mut self) -> Option<&HashMap<&'static str, crate::modern_event::types::WinInTypeItem>> {
                 if self.payload.is_some() {
                     return self.payload.as_ref();
                 }

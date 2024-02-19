@@ -14,7 +14,7 @@ pub(crate) fn generate_templates(provider: Ident, templates: &[Template]) -> Tok
         let ts = quote! {
             fn #fn_name(&mut self) -> ::std::io::Result<()> {
                 use core::ops::DerefMut;
-                let mut map: ::std::collections::HashMap<&str, WinOutType> = ::std::collections::HashMap::new();
+                let mut map: ::std::collections::HashMap<&str, crate::modern_event::types::WinInTypeItem> = ::std::collections::HashMap::new();
 
                 #(map.insert(#names, self.modern_event.#parse_fns?);)*
                 self.payload = Some(map);
