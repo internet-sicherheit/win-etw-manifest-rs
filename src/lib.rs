@@ -38,19 +38,23 @@ pub fn include_manifests(input: TokenStream) -> TokenStream {
     let mut providers = Vec::new();
 
     for path in xml_files {
-        if let Ok(mut f) = File::open(path) {
-            if let Ok(provider) = parse(&mut f) {
-                providers.push(provider);
-            } else {
-                // parsing failed
-                // TODO use experimental diagnostic api to issue a warning
+        if let Ok(mut f) = File::open(&path) {
+            match parse(&mut f) {
+                Ok(provider) => {
+                    providers.push(provider);
+                }
+                Err(e) => {
+                    eprintln!("Parsing of {path:?} failed: {e}");
+                    // parsing failed
+                    // TODO use experimental diagnostic api to issue a warning
+                }
             }
         } else {
+            eprintln!("Failed to open {path:?}");
             // opening of file failed
             // TODO use experimental diagnostic api to issue a warning
         }
     }
-
     create_quote(&providers).into()
 }
 

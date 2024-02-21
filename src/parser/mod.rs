@@ -70,6 +70,7 @@ impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.kind {
             ErrorKind::UnexpectedTag => write!(f, "Unexpected tag: Found {:?}", self.description),
+            ErrorKind::MissingAttribute => write!(f, "Missing attribute: {:?}", self.description),
             _ => write!(f, "Parse error: {:?}", self.kind),
         }
     }

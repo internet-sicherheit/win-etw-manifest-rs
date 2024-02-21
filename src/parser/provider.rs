@@ -76,7 +76,7 @@ impl Provider {
 
     pub(crate) fn guid_constant_name(&self) -> proc_macro2::Ident {
         use quote::format_ident;
-        let name = self.name.to_uppercase().replace('-', "_");
+        let name = self.name.to_uppercase().replace('-', "_").replace(' ', "");
         format_ident!("{}_GUID", name)
     }
 }

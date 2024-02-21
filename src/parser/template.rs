@@ -65,21 +65,44 @@ pub(crate) fn make_function_name(value: &mut String) {
         }
         value.insert(i, '_');
     }
+    while let Some(i) = value.find(' ') {
+        value.remove(i);
+    }
+    while let Some(i) = value.find('.') {
+        value.remove(i);
+    }
+    while let Some(i) = value.find(':') {
+        value.remove(i);
+    }
+    while let Some(i) = value.find('/') {
+        value.remove(i);
+    }
+    while let Some(i) = value.find('(') {
+        value.remove(i);
+    }
+    while let Some(i) = value.find(')') {
+        value.remove(i);
+    }
 }
 
 #[derive(Debug)]
 pub(crate) struct DataType {
     pub(crate) name: String,
-    pub(crate) in_type: String,
+    pub(crate) in_type: WinInType,
 }
 impl DataType {
     fn from_attributes(attr: &[OwnedAttribute]) -> Result<DataType, Error> {
         let name = find_attribute(attr, "name")?;
-        let in_type = find_attribute(attr, "inType")?;
+        let in_type = find_attribute(attr, "inType")?.parse().map_err(|e| {
+            Error::new(
+                super::ErrorKind::TypeParseError,
+                "Encountered unknown in-type".to_owned(),
+            )
+        })?;
         Ok(DataType { name, in_type })
     }
     pub(crate) fn quote_parse_fn(&self) -> proc_macro2::TokenStream {
-        let intype: WinInType = self.in_type.parse().unwrap();
+        let intype: WinInType = self.in_type;
         let intype_variant_ident: Ident = intype.into();
         quote! {
             read_payload_item(WinInType::#intype_variant_ident)
@@ -122,7 +145,7 @@ impl Template {
 
 /// Windows InTypes
 #[derive(Debug, Clone, Copy)]
-enum WinInType {
+pub(crate) enum WinInType {
     Int8,
     UInt8,
     Int16,
@@ -144,8 +167,8 @@ enum WinInType {
     Filetime,
     Systemtime,
 }
-#[derive(Debug, Clone, Copy)]
-struct ParseInTypeError;
+#[derive(Debug, Clone)]
+pub(crate) struct ParseInTypeError(String);
 impl FromStr for WinInType {
     type Err = ParseInTypeError;
 
@@ -158,8 +181,10 @@ impl FromStr for WinInType {
             "win:UInt16" => Ok(UInt16),
             "win:Int32" => Ok(Int32),
             "win:UInt32" => Ok(UInt32),
+            "win:HexInt32" => Ok(UInt32),
             "win:Int64" => Ok(Int64),
             "win:UInt64" => Ok(UInt64),
+            "win:HexInt64" => Ok(UInt64),
             "win:Float" => Ok(Float),
             "win:Double" => Ok(Double),
             "win:Boolean" => Ok(Boolean),
@@ -175,7 +200,7 @@ impl FromStr for WinInType {
             "win:SID" => Ok(Sid),
             "win:FILETIME" => Ok(Filetime),
             "win:SYSTEMTIME" => Ok(Systemtime),
-            _ => Err(ParseInTypeError),
+            _ => Err(ParseInTypeError(s.to_owned())),
         }
     }
 }
@@ -274,6 +299,14 @@ mod tests {
         let mut name = "already_has_Underscores".to_string();
         super::make_function_name(&mut name);
         assert_eq!(name, "already_has_underscores");
+
+        let mut name = "has.Dot".to_string();
+        super::make_function_name(&mut name);
+        assert_eq!(name, "has_dot");
+
+        let mut name = "has Space".to_string();
+        super::make_function_name(&mut name);
+        assert_eq!(name, "has_space");
     }
     #[test]
     fn test_quote_parse_fn() {
@@ -282,7 +315,7 @@ mod tests {
         };
         let data = super::DataType {
             name: "test".to_owned(),
-            in_type: "win:Int8".to_owned(),
+            in_type: "win:Int8".parse().unwrap(),
         };
 
         let got = data.quote_parse_fn();

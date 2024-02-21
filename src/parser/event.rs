@@ -12,7 +12,7 @@ pub(crate) struct Event {
     pub(crate) task: String,
     pub(crate) opcode: Option<String>,
     pub(crate) level: String,
-    pub(crate) keywords: String,
+    pub(crate) keywords: Option<String>,
     pub(crate) template: Option<String>,
 }
 
@@ -31,7 +31,7 @@ impl Event {
         let task = find_attribute(attr, "task")?;
         let opcode = find_attribute(attr, "opcode").ok();
         let level = find_attribute(attr, "level")?;
-        let keywords = find_attribute(attr, "keywords")?;
+        let keywords = find_attribute(attr, "keywords").ok();
         let template = find_attribute(attr, "template").ok();
 
         Ok(Event {
