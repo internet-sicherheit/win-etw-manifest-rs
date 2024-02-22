@@ -58,7 +58,10 @@ impl Event {
                     namespace: _,
                 } => {
                     if name.local_name != "event" {
-                        return Err(Error::new_unexpected());
+                        return Err(Error::new_unexpected_tag(format!(
+                            "Expected <event>, found {}",
+                            name.local_name
+                        )));
                     }
                     vec.push(Event::from_attributes(&attributes)?);
                 }
@@ -69,7 +72,11 @@ impl Event {
                         continue;
                     }
                 }
-                _ => return Err(Error::new_unexpected()),
+                _ => {
+                    return Err(Error::new_unexpected(Some(
+                        "Unexpected element in <event>".to_string(),
+                    )))
+                }
             }
         }
     }

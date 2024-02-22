@@ -34,7 +34,10 @@ impl Keyword {
                     namespace: _,
                 } => {
                     if name.local_name != "keyword" {
-                        return Err(Error::new_unexpected());
+                        return Err(Error::new_unexpected_tag(format!(
+                            "Expected <keyword>, found {}",
+                            name.local_name
+                        )));
                     }
                     vec.push(Keyword::from_attributes(&attributes)?);
                 }
@@ -45,7 +48,7 @@ impl Keyword {
                         continue;
                     }
                 }
-                _ => return Err(Error::new_unexpected()),
+                _ => return Err(Error::new_unexpected(None)),
             }
         }
     }

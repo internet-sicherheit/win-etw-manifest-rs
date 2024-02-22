@@ -33,8 +33,15 @@ impl Task {
                     attributes,
                     namespace: _,
                 } => {
+                    if name.local_name == "opcodes" {
+                        r.skip()?;
+                        continue;
+                    }
                     if name.local_name != "task" {
-                        return Err(Error::new_unexpected());
+                        return Err(Error::new_unexpected_tag(format!(
+                            "Expected <task>, found {}",
+                            name.local_name
+                        )));
                     }
                     vec.push(Task::from_attributes(&attributes)?);
                 }
@@ -45,7 +52,11 @@ impl Task {
                         continue;
                     }
                 }
-                _ => return Err(Error::new_unexpected()),
+                _ => {
+                    return Err(Error::new_unexpected(Some(
+                        "Unexpeced element in <tasks>".to_string(),
+                    )))
+                }
             }
         }
     }

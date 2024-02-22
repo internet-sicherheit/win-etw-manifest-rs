@@ -22,7 +22,10 @@ impl Template {
                     namespace: _,
                 } => {
                     if name.local_name != "data" {
-                        return Err(Error::new_unexpected());
+                        return Err(Error::new_unexpected_tag(format!(
+                            "Expected <data>, found {}",
+                            name.local_name
+                        )));
                     }
                     data.push(DataType::from_attributes(&attributes)?);
                 }
@@ -33,7 +36,7 @@ impl Template {
                         continue;
                     }
                 }
-                _ => return Err(Error::new_unexpected()),
+                _ => return Err(Error::new_unexpected(None)),
             }
         }
     }
@@ -96,7 +99,7 @@ impl DataType {
         let in_type = find_attribute(attr, "inType")?.parse().map_err(|e| {
             Error::new(
                 super::ErrorKind::TypeParseError,
-                "Encountered unknown in-type".to_owned(),
+                format!("Encountered unknown in-type: {:?}", e),
             )
         })?;
         Ok(DataType { name, in_type })
@@ -125,7 +128,10 @@ impl Template {
                     namespace: _,
                 } => {
                     if name.local_name != "template" {
-                        return Err(Error::new_unexpected());
+                        return Err(Error::new_unexpected_tag(format!(
+                            "Expected <template>, found {}",
+                            name.local_name
+                        )));
                     }
                     let tid = find_attribute(&attributes, "tid")?;
                     vec.push(Template::parse(r, tid)?);
@@ -137,7 +143,7 @@ impl Template {
                         continue;
                     }
                 }
-                _ => return Err(Error::new_unexpected()),
+                _ => return Err(Error::new_unexpected(None)),
             }
         }
     }

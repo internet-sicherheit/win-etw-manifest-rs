@@ -29,11 +29,11 @@ enum ErrorKind {
     TypeParseError,
 }
 impl Error {
-    fn new_unexpected() -> Error {
+    fn new_unexpected(description: Option<String>) -> Error {
         Error {
             kind: ErrorKind::UnexpectedStructure,
             source: None,
-            description: None,
+            description,
         }
     }
     fn new_with_kind(kind: ErrorKind) -> Error {
@@ -50,11 +50,11 @@ impl Error {
             description: Some(description),
         }
     }
-    fn new_unexpeced_tag(tag: String) -> Error {
+    fn new_unexpected_tag(description: String) -> Error {
         Error {
             kind: ErrorKind::UnexpectedTag,
             source: None,
-            description: Some(tag),
+            description: Some(description),
         }
     }
 }
@@ -71,7 +71,13 @@ impl Display for Error {
         match self.kind {
             ErrorKind::UnexpectedTag => write!(f, "Unexpected tag: Found {:?}", self.description),
             ErrorKind::MissingAttribute => write!(f, "Missing attribute: {:?}", self.description),
-            _ => write!(f, "Parse error: {:?}", self.kind),
+            _ => {
+                if let Some(text) = &self.description {
+                    write!(f, "{:?}: {}", self.kind, text)
+                } else {
+                    write!(f, "{:?}", self.kind)
+                }
+            }
         }
     }
 }
@@ -100,7 +106,11 @@ pub(crate) fn parse<R: Read>(f: &mut R) -> Result<Provider, Error> {
         } => {
             // Expect the document start
         }
-        _ => return Err(Error::new_unexpected()),
+        _ => {
+            return Err(Error::new_unexpected(Some(
+                "Expected StartDocument tag, found other".to_string(),
+            )))
+        }
     }
     xml_match_start(&mut reader, "instrumentationManifest")?;
     loop {
@@ -116,7 +126,12 @@ pub(crate) fn parse<R: Read>(f: &mut R) -> Result<Provider, Error> {
                     break;
                 }
             }
-            _ => return Err(Error::new_unexpected()),
+            _ => {
+                return Err(Error::new_unexpected(Some(
+                    "Encountered wrong element when searching for <instrumentation> start"
+                        .to_string(),
+                )))
+            }
         }
     }
     xml_match_start(&mut reader, "events")?;
@@ -141,24 +156,27 @@ fn xml_match_start<R: Read>(
             namespace,
         } => {
             if name.local_name != tag {
-                Err(Error::new_unexpeced_tag(name.local_name))
+                Err(Error::new_unexpected_tag(format!(
+                    "Expected {}, found {}",
+                    tag, name.local_name
+                )))
             } else {
                 Ok((attributes, namespace))
             }
         }
-        _ => Err(Error::new_unexpected()),
+        _ => Err(Error::new_unexpected(None)),
     }
 }
 fn xml_match_end<R: Read>(r: &mut EventReader<R>, tag: &str) -> Result<(), Error> {
     match r.next()? {
         XmlEvent::EndElement { name } => {
             if name.local_name != tag {
-                Err(Error::new_unexpeced_tag(name.local_name))
+                Err(Error::new_unexpected_tag(name.local_name))
             } else {
                 Ok(())
             }
         }
-        _ => Err(Error::new_unexpected()),
+        _ => Err(Error::new_unexpected(None)),
     }
 }
 

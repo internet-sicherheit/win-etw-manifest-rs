@@ -47,7 +47,7 @@ impl Provider {
                     "events" => Event::parse_events(r, &mut events)?,
                     "templates" => Template::parse_templates(r, &mut templates)?,
                     "maps" => r.skip()?,
-                    _ => return Err(Error::new_unexpeced_tag(name.local_name)),
+                    _ => return Err(Error::new_unexpected_tag(name.local_name)),
                 },
                 XmlEvent::EndElement { name } => {
                     if name.local_name == "provider" {
@@ -59,7 +59,7 @@ impl Provider {
                         ));
                     }
                 }
-                _ => return Err(Error::new_unexpected()),
+                _ => return Err(Error::new_unexpected(None)),
             }
         }
 
