@@ -196,7 +196,12 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
 
                 let ed = &self.header.event_descriptor;
                 match (ed.id, ed.version) {
-                    #(#event_to_template => {let _ = self.#template_fn();})*
+                    #(#event_to_template => {
+                        let res = self.#template_fn();
+                        if let Err(e) = res {
+                            ::log::warn!("Parsing of payload items failed: {e}");
+                        }
+                    })*
                     _ => {}
                 }
                 self.payload.as_ref()

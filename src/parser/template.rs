@@ -92,6 +92,7 @@ pub(crate) fn make_function_name(value: &mut String) {
 pub(crate) struct DataType {
     pub(crate) name: String,
     pub(crate) in_type: WinInType,
+    pub(crate) length: Option<String>,
 }
 impl DataType {
     fn from_attributes(attr: &[OwnedAttribute]) -> Result<DataType, Error> {
@@ -102,13 +103,31 @@ impl DataType {
                 format!("Encountered unknown in-type: {:?}", e),
             )
         })?;
-        Ok(DataType { name, in_type })
+        let length = find_attribute(attr, "length").ok();
+        if in_type == WinInType::Binary && length.is_none() {
+            // eprintln!("proc-etw-manifest [Warning]: Found template with Binary data type but no length field, attributes {:?}", attr);
+            return Err(Error::new(
+                super::ErrorKind::MissingAttribute,
+                "Template with Binary in-type but no length field".to_string(),
+            ));
+        }
+        Ok(DataType {
+            name,
+            in_type,
+            length,
+        })
     }
     pub(crate) fn quote_parse_fn(&self) -> proc_macro2::TokenStream {
         let intype: WinInType = self.in_type;
         let intype_variant_ident: Ident = intype.into();
-        quote! {
-            read_payload_item(WinInType::#intype_variant_ident)
+        if let Some(length) = &self.length {
+            quote! {
+                read_payload_item(WinInType::#intype_variant_ident, Some(#length))
+            }
+        } else {
+            quote! {
+                read_payload_item(WinInType::#intype_variant_ident, None)
+            }
         }
     }
     pub(crate) fn name_literal(&self) -> proc_macro2::Literal {
@@ -150,7 +169,7 @@ impl Template {
 }
 
 /// Windows InTypes
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum WinInType {
     Int8,
     UInt8,
