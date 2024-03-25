@@ -35,7 +35,7 @@ pub(crate) fn generate_templates(provider: Ident, templates: &[Template]) -> Tok
             })
             .collect();
         let ts = quote! {
-            fn #fn_name(&mut self) -> ::std::io::Result<()> {
+            fn #fn_name(&mut self) -> ::core::result::Result<(), crate::modern_event::ModernEventError> {
                 use ::core::ops::DerefMut;
                 let mut map: ::std::collections::HashMap<&str, crate::modern_event::types::WinInTypeItem> = ::std::collections::HashMap::new();
 
