@@ -137,6 +137,7 @@ fn quote_provider_struct(p: &Provider) -> proc_macro2::TokenStream {
 
     let templates = template::generate_templates(symbol.clone(), &p.templates);
     quote! {
+        #[derive(Debug)]
         pub struct #symbol {
             modern_event: ModernEvent,
             payload: ::core::option::Option<::std::collections::HashMap<&'static str, crate::modern_event::types::WinInTypeItem>>,
