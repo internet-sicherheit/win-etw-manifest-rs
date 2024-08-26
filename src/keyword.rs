@@ -4,10 +4,13 @@ use xml::{attribute::OwnedAttribute, reader::XmlEvent, EventReader};
 
 use super::{find_attribute, Error, ErrorKind};
 
+/// A keyword defined by a provider
 #[derive(Debug)]
-pub(crate) struct Keyword {
-    pub(crate) name: String,
-    pub(crate) mask: u64,
+pub struct Keyword {
+    /// The keyword
+    pub name: String,
+    /// The bitmask defined for this keyword
+    pub mask: u64,
 }
 
 impl Keyword {
@@ -56,7 +59,7 @@ impl Keyword {
 
 #[cfg(test)]
 mod tests {
-    use crate::parser::{keyword::Keyword, xml_match_start};
+    use crate::{keyword::Keyword, xml_match_start};
     use xml::{EventReader, ParserConfig};
 
     #[test]

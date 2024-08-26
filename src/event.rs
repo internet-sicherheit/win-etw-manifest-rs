@@ -2,32 +2,46 @@ use std::io::Read;
 
 use xml::{attribute::OwnedAttribute, reader::XmlEvent, EventReader};
 
-use super::{find_attribute, template::make_function_name, Error, ErrorKind};
+use super::{find_attribute, Error, ErrorKind};
 
+/// A event defined by a provider
 #[derive(Debug)]
-pub(crate) struct Event {
-    pub(crate) value: u16,
-    pub(crate) symbol: String,
-    pub(crate) version: u8,
-    pub(crate) task: String,
-    pub(crate) opcode: Option<String>,
-    pub(crate) level: String,
-    pub(crate) keywords: Option<String>,
-    pub(crate) template: Option<String>,
+pub struct Event {
+    /// Numerical identifier of the event
+    pub value: u16,
+    pub symbol: String,
+    /// Version of the event
+    pub version: u8,
+    /// Task name corresponding to this event
+    pub task: String,
+    /// Optional opcode
+    pub opcode: Option<String>,
+    /// Trace level of the event (e.g. `win:Informational`)
+    pub level: String,
+    /// List of keywords (usually one)
+    pub keywords: Option<String>,
+    /// Template name
+    pub template: Option<String>,
 }
 
 impl Event {
     fn from_attributes(attr: &[OwnedAttribute]) -> Result<Event, Error> {
         let value = find_attribute(attr, "value")?;
-        let value: u16 = value
-            .parse()
-            .map_err(|_| Error::new_with_kind(ErrorKind::TypeParseError))?;
+        let value: u16 = value.parse().map_err(|_| {
+            Error::new(
+                ErrorKind::TypeParseError,
+                format!("found `{value}` expeced u16"),
+            )
+        })?;
 
         let symbol = find_attribute(attr, "symbol")?;
         let version = find_attribute(attr, "version")?;
-        let version: u8 = version
-            .parse()
-            .map_err(|_| Error::new_with_kind(ErrorKind::TypeParseError))?;
+        let version: u8 = version.parse().map_err(|_| {
+            Error::new(
+                ErrorKind::TypeParseError,
+                format!("found `{value}` expected u8"),
+            )
+        })?;
         let task = find_attribute(attr, "task")?;
         let opcode = find_attribute(attr, "opcode").ok();
         let level = find_attribute(attr, "level")?;
@@ -80,34 +94,12 @@ impl Event {
             }
         }
     }
-
-    pub(crate) fn identifier_tuple(&self) -> proc_macro2::TokenStream {
-        use quote::quote;
-        let id = self.value;
-        let version = self.version;
-        quote! {
-            (#id, #version)
-        }
-    }
-    pub(crate) fn template_function_ident(&self) -> Option<proc_macro2::Ident> {
-        let mut name = self.template.clone()?;
-
-        if !name.is_ascii() {
-            panic!(
-                "Non ASCII template id \"{}\" found, which is not supported!",
-                name
-            );
-        }
-        make_function_name(&mut name);
-
-        Some(quote::format_ident!("parse_payload_{name}"))
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::Event;
-    use crate::parser::xml_match_start;
+    use crate::xml_match_start;
     use xml::{EventReader, ParserConfig};
 
     #[test]

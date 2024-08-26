@@ -1,24 +1,32 @@
 use std::io::Read;
 
-use crate::parser::{event::*, keyword::*, task::*, template::*};
+use crate::{event::*, keyword::*, task::*, template::*};
 use uuid::Uuid;
 use xml::{reader::XmlEvent, EventReader};
 
 use super::{find_attribute, Error, ErrorKind};
 
+/// A instrumentation provider parsed from a instrumentation manifest
 #[derive(Debug)]
-pub(crate) struct Provider {
-    pub(crate) name: String,
-    pub(crate) guid: Uuid,
-    // pub(crate) resource_file_name: String,
-    // pub(crate) message_file_name: String,
-    pub(crate) symbol: String,
-    // pub(crate) source: String,
-    pub(crate) keywords: Vec<Keyword>,
-    pub(crate) tasks: Vec<Task>,
+pub struct Provider {
+    /// The name of the provider
+    pub name: String,
+    /// The GUID of the provider
+    pub guid: Uuid,
+    // pub resource_file_name: String,
+    // pub message_file_name: String,
+    /// The symbol(-name) of the provider
+    pub symbol: String,
+    // pub source: String,
+    /// Keywords defined for this provider
+    pub keywords: Vec<Keyword>,
+    /// Tasks defined for this provider
+    pub tasks: Vec<Task>,
     // maps: Vec<Map>,
-    pub(crate) events: Vec<Event>,
-    pub(crate) templates: Vec<Template>,
+    /// Events
+    pub events: Vec<Event>,
+    /// Templates for event payloads
+    pub templates: Vec<Template>,
 }
 impl Provider {
     pub(super) fn parse<R: Read>(r: &mut EventReader<R>) -> Result<Provider, Error> {
@@ -28,8 +36,12 @@ impl Provider {
         let guid_str = find_attribute(&attributes, "guid")?;
         let symbol = find_attribute(&attributes, "symbol")?;
 
-        let guid = Uuid::parse_str(&guid_str)
-            .map_err(|_| Error::new_with_kind(ErrorKind::TypeParseError))?;
+        let guid = Uuid::parse_str(&guid_str).map_err(|_| {
+            Error::new(
+                ErrorKind::TypeParseError,
+                format!("failed to parse GUID from `{guid_str}`"),
+            )
+        })?;
 
         let mut keywords = Vec::new();
         let mut tasks = Vec::new();
@@ -72,11 +84,5 @@ impl Provider {
             events,
             templates,
         })
-    }
-
-    pub(crate) fn guid_constant_name(&self) -> proc_macro2::Ident {
-        use quote::format_ident;
-        let name = self.name.to_uppercase().replace('-', "_").replace(' ', "");
-        format_ident!("{}_GUID", name)
     }
 }
