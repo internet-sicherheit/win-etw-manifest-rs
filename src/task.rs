@@ -2,14 +2,17 @@ use std::io::Read;
 
 use xml::{attribute::OwnedAttribute, reader::XmlEvent, EventReader};
 
-use crate::parser::{find_attribute, ErrorKind};
+use crate::{find_attribute, ErrorKind};
 
 use super::Error;
 
+/// A task defined by a provider
 #[derive(Debug)]
-pub(crate) struct Task {
-    pub(crate) name: String,
-    pub(crate) value: u64,
+pub struct Task {
+    /// Name of the Task
+    pub name: String,
+    /// Numerical identifier of the task
+    pub value: u64,
 }
 
 impl Task {
@@ -65,7 +68,7 @@ impl Task {
 #[cfg(test)]
 mod tests {
     use super::Task;
-    use crate::parser::xml_match_start;
+    use crate::xml_match_start;
     use xml::{EventReader, ParserConfig};
 
     #[test]
