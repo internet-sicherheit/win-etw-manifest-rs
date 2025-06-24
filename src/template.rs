@@ -7,15 +7,24 @@ use super::{find_attribute, Error};
 /// A event payload template
 ///
 /// Information about payload items, their data types and order.
+///
+/// [XML Schema Documentation](https://learn.microsoft.com/en-us/windows/win32/wes/eventmanifestschema-templateitemtype-complextype)
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct Template {
-    /// Name of the template
+    /// Unique identifier of the template
     pub tid: String,
+    /// Optional name of the Template
+    pub name: Option<String>,
     /// Layout of the data this template describes
     pub data: Vec<DataType>,
 }
 impl Template {
-    pub(crate) fn parse<R: Read>(r: &mut EventReader<R>, tid: String) -> Result<Template, Error> {
+    pub(crate) fn parse<R: Read>(
+        r: &mut EventReader<R>,
+        tid: String,
+        t_name: Option<String>,
+    ) -> Result<Template, Error> {
         let mut data = Vec::new();
         loop {
             match r.next()? {
@@ -34,7 +43,11 @@ impl Template {
                 }
                 XmlEvent::EndElement { name } => {
                     if name.local_name == "template" {
-                        return Ok(Template { tid, data });
+                        return Ok(Template {
+                            tid,
+                            name: t_name,
+                            data,
+                        });
                     } else {
                         continue;
                     }
@@ -47,6 +60,7 @@ impl Template {
 
 /// Description of data items
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct DataType {
     /// Name of the data item
     pub name: String,
@@ -101,7 +115,8 @@ impl Template {
                         )));
                     }
                     let tid = find_attribute(&attributes, "tid")?;
-                    vec.push(Template::parse(r, tid)?);
+                    let t_name = find_attribute(&attributes, "name").ok();
+                    vec.push(Template::parse(r, tid, t_name)?);
                 }
                 XmlEvent::EndElement { name } => {
                     if name.local_name == "templates" {
@@ -117,6 +132,8 @@ impl Template {
 }
 
 /// Windows InTypes
+///
+/// [XML Schema Documentation](https://learn.microsoft.com/en-us/windows/win32/wes/eventmanifestschema-inputtype-complextype)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum WinInType {

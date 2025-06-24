@@ -5,7 +5,11 @@ use xml::{attribute::OwnedAttribute, reader::XmlEvent, EventReader};
 use super::{find_attribute, Error, ErrorKind};
 
 /// A event defined by a provider
+///
+/// [XML Schema Documentation](https://learn.microsoft.com/en-us/windows/win32/wes/eventmanifestschema-eventdefinitiontype-complextype)
+// TODO: Except value, every attribute is optional according to schema definition.
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct Event {
     /// Numerical identifier of the event
     pub value: u16,

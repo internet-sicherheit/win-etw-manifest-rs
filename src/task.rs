@@ -8,6 +8,7 @@ use super::Error;
 
 /// A task defined by a provider
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct Task {
     /// Name of the Task
     pub name: String,

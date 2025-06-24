@@ -19,7 +19,7 @@ use xml::{
 
 #[derive(Debug)]
 pub struct Error {
-    kind: ErrorKind,
+    pub kind: ErrorKind,
     source: Option<xml::reader::Error>,
     description: Option<String>,
 }

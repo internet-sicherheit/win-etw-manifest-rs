@@ -8,6 +8,7 @@ use super::{find_attribute, Error, ErrorKind};
 
 /// A instrumentation provider parsed from a instrumentation manifest
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct Provider {
     /// The name of the provider
     pub name: String,

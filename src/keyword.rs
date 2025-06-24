@@ -6,6 +6,7 @@ use super::{find_attribute, Error, ErrorKind};
 
 /// A keyword defined by a provider
 #[derive(Debug)]
+#[non_exhaustive]
 pub struct Keyword {
     /// The keyword
     pub name: String,
