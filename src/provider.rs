@@ -60,6 +60,10 @@ impl Provider {
                     "events" => Event::parse_events(r, &mut events)?,
                     "templates" => Template::parse_templates(r, &mut templates)?,
                     "maps" => r.skip()?,
+                    "channels" => r.skip()?,
+                    "levels" => r.skip()?,
+                    "opcodes" => r.skip()?,
+                    "filters" => r.skip()?,
                     _ => return Err(Error::new_unexpected_tag(name.local_name)),
                 },
                 XmlEvent::EndElement { name } => {
