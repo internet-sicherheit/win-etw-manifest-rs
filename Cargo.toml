@@ -1,8 +1,8 @@
 [package]
-name = "etw-manifest"
+name = "win-etw-manifest"
 version = "0.1.0"
 edition = "2021"
-authors = ["Marvin Gudel <marvin.s.gudel@studmail.w-hs.de>"]
+authors = ["Marvin Gudel <github.marvin@gudel.org>"]
 license = "MIT"
 description = "Parser and Rust structures to work with Microsoft Windows instrumentation manifests."
 
